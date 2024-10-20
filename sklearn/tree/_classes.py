@@ -66,8 +66,8 @@ CRITERIA_CLF = {
     "gini": _criterion.Gini,
     "log_loss": _criterion.Entropy,
     "entropy": _criterion.Entropy,
-    "fuzzy_extropy":  _criterion.FuzzyExtropy
-
+    "extropy":  _criterion.Extropy,
+    "fuzzy_extropy": _criterion.FuzzyExtropy
 }
 CRITERIA_REG = {
     "squared_error": _criterion.MSE,
@@ -939,7 +939,7 @@ class DecisionTreeClassifier(ClassifierMixin, BaseDecisionTree):
 
     _parameter_constraints: dict = {
         **BaseDecisionTree._parameter_constraints,
-        "criterion": [StrOptions({"gini", "entropy", "log_loss","fuzzy_extropy"}), Hidden(Criterion)],
+        "criterion": [StrOptions({"gini", "entropy", "log_loss","extropy","fuzzy_extropy"}), Hidden(Criterion)],
         "class_weight": [dict, list, StrOptions({"balanced"}), None],
     }
 
@@ -1088,6 +1088,7 @@ class DecisionTreeClassifier(ClassifierMixin, BaseDecisionTree):
             "gini",
             "log_loss",
             "entropy", 
+            "extropy",
             "fuzzy_extropy"
         }
         tags.classifier_tags.multi_label = True
@@ -1716,6 +1717,7 @@ class ExtraTreeClassifier(DecisionTreeClassifier):
             "gini",
             "log_loss",
             "entropy", 
+            "extropy",
             "fuzzy_extropy"
         }
         tags.classifier_tags.multi_label = True
