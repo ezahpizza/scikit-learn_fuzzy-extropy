@@ -98,6 +98,11 @@ cdef class ClassificationCriterion(Criterion):
     cdef float64_t[:, ::1] sum_right    # Same as above, but for the right side of the split
     cdef float64_t[:, ::1] sum_missing  # Same as above, but for missing values in X
 
+    # Additional structures for Fuzzy Extropy
+    cdef float64_t[::1] fuzzy_membership    # Membership values for each sample
+    cdef float64_t[::1] fuzzy_membership_left   # Membership values for the left side of the split
+    cdef float64_t[::1] fuzzy_membership_right  # Membership values for the right side of the split
+
 cdef class RegressionCriterion(Criterion):
     """Abstract regression criterion."""
 
