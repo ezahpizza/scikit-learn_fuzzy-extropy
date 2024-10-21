@@ -609,32 +609,28 @@ cdef class ClassificationCriterion(Criterion):
 
 
 cdef class Extropy(ClassificationCriterion):
-    r"""
-    Extropy impurity criterion.
+       r"""Extropy impurity criterion.
 
-    This criterion handles cases where the target is a classification problem taking 
-    values 0, 1, ..., K-2, K-1. If node m represents a region Rm with Nm observations, 
-    then let:
+    This criterion computes the impurity of a node using the extropy measure,
+    which is an alternative to entropy that incorporates probabilities (p_i) 
+    associated with each sample. If node m represents a region Rm with n observations,
+    then let
 
-        p_i = 1 / Nm ∑_{x_i in Rm} I(y_i = class k)
+        p_i = probability of sample i belonging to the class in node m.
 
-    be the probability (proportion) of class k observations in node m, where p_i 
-    represents the probability of an instance belonging to a particular class.
+    The extropy J(X) is then defined as:
 
-    The Extropy is defined as:
+        J(X) = \sum_{i=1}^{n} [(1 - p_i) * log(1 - p_i)]
 
-        J(X) = -∑_{i=1}^n (1 - p_i) * log(1 - p_i)
+    where:
+        - n is the total number of samples in the node.
+        - p_i is the probability of sample i belonging to the class.
 
-    Where:
-    - n is the number of classes (K),
-    - p_i is the probability of class i in the node.
+    This formula takes the complement of the probability (1 - p_i) and calculates
+    the sum of its product with the logarithm of (1 - p_i). It measures the uncertainty
+    in classification based on the distribution of probabilities.
 
-    This criterion measures the fuzziness or uncertainty of the classification 
-    outcomes in a decision node. It differs from traditional entropy by focusing 
-    on the complement probabilities (1 - p_i) rather than p_i directly. As the 
-    probability distribution becomes more uniform, the extropy increases, 
-    indicating higher uncertainty. Conversely, when one class dominates (high p_i), 
-    the extropy value decreases, signaling less uncertainty.
+    A lower value of J(X) indicates a purer node with less uncertainty in classification.
     """
 
     cdef float64_t node_impurity(self) noexcept nogil:
@@ -701,55 +697,50 @@ cdef class Extropy(ClassificationCriterion):
 cdef class FuzzyExtropy(ClassificationCriterion):
     r"""Fuzzy Extropy impurity criterion.
 
-    This criterion computes the impurity of a node based on a fuzzy membership
-    value approach. It is used in cases where the target is a classification,
-    and the membership values (μ_i) represent the degree to which each sample
-    belongs to a particular class. If node m represents a region Rm with n 
-    observations, then let
+    This criterion computes the impurity of a node based on fuzzy extropy, which 
+    incorporates fuzzy membership values (μ_i) to measure uncertainty in classification. 
+    If node m represents a region Rm with n observations, then let
 
         mu_i = degree of membership of sample i in class m
 
-    The impurity A is defined as:
+    The fuzzy extropy J(A) is defined as:
 
-        A = (1 / (n * e)) * sum_{i=1}^{n} [mu_i * exp(mu_i) + (1 - mu_i) * exp(1 - mu_i)]
+        J(A) = (1 / (n * e)) * \sum_{i=1}^{n} [\mu_i * exp(\mu_i) + (1 - \mu_i) * exp(1 - \mu_i)]
 
     where:
         - n is the total number of samples in the node.
         - e is Euler's number (the base of the natural logarithm).
         - mu_i is the membership value of sample i in the class.
 
-    The formula combines the membership value and its complement (1 - mu_i) 
-    with their respective exponentials to provide a measure of impurity based 
+    This formula combines the membership value (μ_i) and its complement (1 - μ_i), 
+    weighted by their respective exponentials, to provide a measure of the impurity based 
     on the distribution of fuzzy memberships.
 
-    A lower value of A indicates a purer node with less classification uncertainty.
+    A lower value of J(A) indicates a purer node with less uncertainty in classification.
     """
 
-    cdef float64_t node_impurity(self) noexcept nogil:
- 	"""Evaluate the impurity of the current node.
 
-        Evaluate the cross-entropy criterion as impurity of the current node,
+    cdef float64_t node_impurity(self) noexcept nogil:
+	 """Evaluate the impurity of the current node.
+
+        Evaluate the fuzzy-extropy criterion as impurity of the current node,
         i.e. the impurity of sample_indices[start:end]. The smaller the impurity the
         better.
         """
+
         cdef float64_t f_extropy = 0.0
         cdef float64_t mu_i
-        cdef float64_t term1, term2
         cdef intp_t i
 
-        # Iterate over each value in the node's membership array
         for i in range(self.n_samples):
             mu_i = self.sum_total[i]
-            term1 = mu_i * exp(mu_i)
-            term2 = (1 - mu_i) * exp(1 - mu_i)
-            f_extropy += term1 + term2
+            f_extropy += mu_i * exp(mu_i) + (1 - mu_i) * exp(1 - mu_i)
 
-        # Normalize the result by (n * e)
         return f_extropy / (self.n_samples * exp(1.0))
 
     cdef void children_impurity(self, float64_t* impurity_left,
                                 float64_t* impurity_right) noexcept nogil:
- 	"""Evaluate the impurity in children nodes.
+	 """Evaluate the impurity in children nodes.
 
         i.e. the impurity of the left child (sample_indices[start:pos]) and the
         impurity the right child (sample_indices[pos:end]).
@@ -765,25 +756,17 @@ cdef class FuzzyExtropy(ClassificationCriterion):
         cdef float64_t f_extropy_left = 0.0
         cdef float64_t f_extropy_right = 0.0
         cdef float64_t mu_i
-        cdef float64_t term1, term2
         cdef intp_t i
 
-        # Calculate the impurity for the left child
         for i in range(self.n_left):
             mu_i = self.sum_left[i]
-            term1 = mu_i * exp(mu_i)
-            term2 = (1 - mu_i) * exp(1 - mu_i)
-            f_extropy_left += term1 + term2
+            f_extropy_left += mu_i * exp(mu_i) + (1 - mu_i) * exp(1 - mu_i)
 
-        # Calculate the impurity for the right child
         for i in range(self.n_right):
             mu_i = self.sum_right[i]
-            term1 = mu_i * exp(mu_i)
-            term2 = (1 - mu_i) * exp(1 - mu_i)
-            f_extropy_right += term1 + term2
+            f_extropy_right += mu_i * exp(mu_i) + (1 - mu_i) * exp(1 - mu_i)
 
-        # Normalize and set the impurity values
-        impurity_left[0] = f_extropy_left/ (self.n_left * exp(1.0))
+        impurity_left[0] = f_extropy_left / (self.n_left * exp(1.0))
         impurity_right[0] = f_extropy_right / (self.n_right * exp(1.0))
 
 
